@@ -9,7 +9,7 @@ from segmentation.network_postprocessor import scale_baseline
 from segmentation.preprocessing.source_image import SourceImage
 from segmentation.settings import ModelConfiguration, ColorMap
 
-from tabl_line_detection.postprocessing.table_extraction import extract_tables_from_probability_map
+from table_line_detection.postprocessing.table_extraction import extract_tables_from_probability_map
 
 
 @dataclass

@@ -13,7 +13,7 @@ from segmentation.preprocessing.source_image import SourceImage
 from segmentation.scripts.train import get_default_device
 from PIL import Image, ImageDraw
 
-from tabl_line_detection.network_postprocessor import TableResult, NetworkTablePostProcessor
+from table_line_detection.network_postprocessor import TableResult, NetworkTablePostProcessor
 
 colors = [(255, 0, 0),
           (0, 255, 0),
