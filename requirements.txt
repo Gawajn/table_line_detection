@@ -1,4 +1,4 @@
--e git+https://github.com/Gawajn/segmentation-pytorch.git#egg=pixel-classifier-torch
+git+https://github.com/Gawajn/segmentation-pytorch.git#egg=pixel-classifier-torch
 numpy~=1.24.2
 setuptools
 matplotlib~=3.7.1
