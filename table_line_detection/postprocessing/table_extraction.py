@@ -111,6 +111,15 @@ def calculate_distance(index, ccs, maximum_angle):
             # distance_matrix[ind1, ind2] = distance * same_type
     return (index1, index2), value
 
+def extracted_ccs_optimized(array: np.array):
+    raveled_array = array.ravel()
+
+    index = np.arange(len(raveled_array))
+    sort_idx = np.argsort(raveled_array)
+    cnt = np.bincount(raveled_array)
+    res = np.split(index[sort_idx], np.cumsum(cnt[:-1]))[1:]
+    ccs = [np.unravel_index(res[ind], array.shape) for ind, i in enumerate(res)]
+    return ccs
 
 def extract_tables_from_probability_map(image_map: np.array, line_horizontal_index=1, line_vertical_index=2,
                                         original=None, processes=8):
@@ -140,8 +149,9 @@ def extract_baselines(image_map: np.array, line_horizontal_index=1, line_vertica
     baseline[base_ind] = 1
     baseline_border[base_border_ind] = 1
     baseline_ccs, n_baseline_ccs = label(baseline, structure=[[1, 1, 1], [1, 1, 1], [1, 1, 1]])
+    baseline_ccs = extracted_ccs_optimized(baseline_ccs)
 
-    baseline_ccs = [np.where(baseline_ccs == x) for x in range(1, n_baseline_ccs + 1)]
+    #baseline_ccs = [np.where(baseline_ccs == x) for x in range(1, n_baseline_ccs + 1)]
     baseline_ccs = [BaseLineCCs(x, 'baseline') for x in baseline_ccs if len(x[0]) > 10]
 
     all_ccs = baseline_ccs  # + baseline_border_ccs
