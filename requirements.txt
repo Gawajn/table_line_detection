@@ -18,3 +18,4 @@ mashumaro~=3.5
 dataclasses_json
 Pillow~=9.4.0
 torch~=2.0.0
+pylsd-nova

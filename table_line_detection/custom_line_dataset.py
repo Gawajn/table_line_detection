@@ -126,6 +126,7 @@ class SimpTableLineFileFormat(DataClassJSONMixin):
 
 def crop_mask_image(image, max_pixel_size):
     current_pixel_size = image.width * image.height
+
     aspect_ratio_w_h = image.width / image.height
     ratio = max_pixel_size / current_pixel_size
     if current_pixel_size > max_pixel_size:
@@ -135,9 +136,11 @@ def crop_mask_image(image, max_pixel_size):
         range_h = image.height - new_h
         start_w = random.randint(0, range_w)
         start_h = random.randint(0, range_h)
-        return (start_w, start_w + new_w), (start_h, start_h + new_h),
+        return (start_w, start_w + new_w), (start_h, start_h + new_h)
 
-    pass
+    return (0, image.width), (0, image.height)
+
+
 
 
 class TableDataset(Dataset):
@@ -242,13 +245,12 @@ def finetune():
 
 
 if __name__ == "__main__":
-    # images_dirs = ["/home/alexanderh/Documents/datasets/table/doc/"]
-    # mask_dir = ["/home/alexanderh/Documents/datasets/table/gt"]
-    images_dirs = ["/home/alexanderh/Documents/datasets/table/doc2/"]
-    mask_dir = ["/home/alexanderh/Documents/datasets/table/gt2/"]
+    images_dirs = ["/home/alexanderh/Documents/datasets/table/doc/", "/home/alexanderh/Documents/datasets/table/doc2/", "/home/alexanderh/Documents/datasets/table/SynthTableDS3/img/"]
+    mask_dir = ["/home/alexanderh/Documents/datasets/table/gt", "/home/alexanderh/Documents/datasets/table/gt2/", "/home/alexanderh/Documents/datasets/table/SynthTableDS3/masks/"]
+    #images_dirs = ["/home/alexanderh/Documents/datasets/table/doc2/"]
+    #mask_dir = ["/home/alexanderh/Documents/datasets/table/gt2/"]
     df = dirs_to_pandaframe(images_dirs, mask_dir)
-    ##data
-    print(get_default_device())
+
     color_map = ColorMap([ClassSpec(label=i.value, name=i.name.lower(), color=i.get_color()) for i in TableLabel])
     input_transforms = Compose(remove_nones([
         GrayToRGBTransform() if True else None,
