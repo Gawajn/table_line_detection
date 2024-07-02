@@ -15,6 +15,8 @@ from table_line_detection.network_postprocessor import TableResult
 
 import math
 import numpy as np
+
+
 @dataclass
 class AABB:
     x1: float
@@ -40,6 +42,8 @@ class AABB:
 
     def copy(self) -> 'AABB':
         return copy.copy(self)
+
+
 @dataclass
 class Point:
     x: float
@@ -116,6 +120,7 @@ class Line:
     def __delitem__(self, key):
         del self.line[key]
 
+
 def connect_connected_components_to_line(cc_list: List[Line], staff_line_height: int,
                                          staff_space_height: int) -> List[Line]:
     def connect_cc(cc_list: List[Line]) -> List[Line]:
@@ -168,12 +173,14 @@ def connect_connected_components_to_line(cc_list: List[Line], staff_line_height:
     llc = connect_cc(cc_list)
     return llc
 
+
 @dataclass
 class TableLSDProcessorConfig:
     max_parallel_distance_thresh: float = 8
     max_angle_thresh = 1.5
     max_merge_distance_thresh = 0.05
     min_length_to_not_filter_small_line_segments = 0.05
+
 
 def merge_line_segments(linesegments, config: TableLSDProcessorConfig):
     for i in range(len(linesegments)):
@@ -183,6 +190,7 @@ def merge_line_segments(linesegments, config: TableLSDProcessorConfig):
                 linesegments[i] = linesegments[i].union(linesegments[j])
                 del linesegments[j]
     pass
+
 
 def line_to_angle(line, use_abs=True):
     x1, y1, x2, y2 = line[:4]
@@ -198,7 +206,7 @@ def line_to_angle(line, use_abs=True):
 def distance_line_point(p, line):
     p1 = np.array(p)
     p2, p3 = np.array(line[:2]), np.array(line[2:4])
-    return np.abs(np.cross(p2-p1, p1-p3) / np.linalg.norm(p2-p1))
+    return np.abs(np.cross(p2 - p1, p1 - p3) / np.linalg.norm(p2 - p1))
 
 
 def near_collinear(linea, lineb, angle_thres=1.5, distance_thres=1.5):
@@ -224,8 +232,10 @@ def near_collinear(linea, lineb, angle_thres=1.5, distance_thres=1.5):
     #print("Collinear")
     return True
 
+
 def sqrt_distance_of_two_line_segments(line1, line2):
     pass
+
 
 def normalized_distance(p1, p2, image_width, image_height):
     x1, y1 = p1
@@ -237,7 +247,8 @@ def normalized_distance(p1, p2, image_width, image_height):
     length = np.linalg.norm([x1_norm - x2_norm, y1_norm - y2_norm])
     #print(f"x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}, width: {image_width}, height: {image_height}, length: {length}")
     #print(f"x1_norm: {x1_norm}, y1_norm: {y1_norm}, x2_norm: {x2_norm}, y2_norm: {y2_norm}")
-    return length #np.linalg.norm([p1[0] / image_width - p2[0] / image_width, p1[1] / image_height - p2[1] / image_height])
+    return length  #np.linalg.norm([p1[0] / image_width - p2[0] / image_width, p1[1] / image_height - p2[1] / image_height])
+
 
 class TableLSDProcessor:
     def __init__(self, config: TableLSDProcessorConfig = TableLSDProcessorConfig()):
@@ -255,21 +266,25 @@ class TableLSDProcessor:
         draw = ImageDraw.Draw(img_color)
         img_height, img_width = img_gray.shape
         l_segments = []
+
         def filter_line_segments(segments):
             filtered_segments = []
             for i in range(segments.shape[0]):
                 x1, y1, x2, y2, width = segments[i]
-                length = normalized_distance((x1,y1), (x2,y2), image_width=img_width, image_height=img_height) #np.linalg.norm([x1_norm - x2_norm, y1_norm - y2_norm])
+                length = normalized_distance((x1, y1), (x2, y2), image_width=img_width,
+                                             image_height=img_height)  #np.linalg.norm([x1_norm - x2_norm, y1_norm - y2_norm])
 
                 if length > self.config.min_length_to_not_filter_small_line_segments:
                     #print("filtered", length, self.config.min_length_to_not_filter_small_line_segments)
                     filtered_segments.append(segments[i])
             return np.array(filtered_segments)
+
         segments = filter_line_segments(segments)
         line_list = []
         line_list_tuples = []
         for i in range(segments.shape[0]):
-            line_list_tuples.append((int(segments[i, 0]), int(segments[i, 1]), int(segments[i, 2]), int(segments[i, 3])))
+            line_list_tuples.append(
+                (int(segments[i, 0]), int(segments[i, 1]), int(segments[i, 2]), int(segments[i, 3])))
             pt1 = (int(segments[i, 0]), int(segments[i, 1]))
             pt2 = (int(segments[i, 2]), int(segments[i, 3]))
             width = segments[i, 4]
@@ -298,6 +313,7 @@ class TableLSDProcessor:
                     color = tuple(np.random.randint(256, size=3))
                     draw2.line(((x1, y1), (x2, y2)), fill=(255, 0, 0), width=int(np.ceil(3)))
                     draw2.line(((x3, y3), (x4, y4)), fill=(0, 255, 0), width=int(np.ceil(3)))
+
                     #distance = sqrt_distance_of_two_line_segments(line_list_tuples[l1], line_list_tuples[l2])
                     def min__distance_between_two_line_segs(line1, line2):
                         x1, y1, x2, y2 = line1
@@ -306,11 +322,11 @@ class TableLSDProcessor:
                         p2 = (x2, y2)
                         p3 = (x3, y3)
                         p4 = (x4, y4)
-                        noramlized_min_distance = min(normalized_distance(p1, p3, image_width=img_width, image_height=img_height),
-                                                      normalized_distance(p1, p4, image_width=img_width, image_height=img_height),
-                                                      normalized_distance(p2, p3, image_width=img_width, image_height=img_height),
-                                                      normalized_distance(p2, p4, image_width=img_width, image_height=img_height))
-
+                        noramlized_min_distance = min(
+                            normalized_distance(p1, p3, image_width=img_width, image_height=img_height),
+                            normalized_distance(p1, p4, image_width=img_width, image_height=img_height),
+                            normalized_distance(p2, p3, image_width=img_width, image_height=img_height),
+                            normalized_distance(p2, p4, image_width=img_width, image_height=img_height))
 
                         if x1 < x3 and x2 > x4:
                             return noramlized_min_distance
@@ -320,10 +336,13 @@ class TableLSDProcessor:
                             return noramlized_min_distance
                         return noramlized_min_distance
 
-                    if min__distance_between_two_line_segs(line_list_tuples[l1], line_list_tuples[l2]) > self.config.max_merge_distance_thresh:
+                    if min__distance_between_two_line_segs(line_list_tuples[l1], line_list_tuples[
+                        l2]) > self.config.max_merge_distance_thresh:
                         #print("distance")
                         continue
-                    collinear = near_collinear(line_list_tuples[l1], line_list_tuples[l2], angle_thres=self.config.max_angle_thresh, distance_thres=self.config.max_parallel_distance_thresh)
+                    collinear = near_collinear(line_list_tuples[l1], line_list_tuples[l2],
+                                               angle_thres=self.config.max_angle_thresh,
+                                               distance_thres=self.config.max_parallel_distance_thresh)
 
                     if collinear:
                         #print("merged")
@@ -340,15 +359,15 @@ class TableLSDProcessor:
                         # pt1 = i.point1()
                         # pt2 = i.point2()
 
-
-
                         if dif_x > dif_y:
                             line_list_tuples[l1] = (min_x, y_val[x_val.index(min_x)], max_x, y_val[x_val.index(max_x)])
-                            draw2.line(((min_x, y_val[x_val.index(min_x)]+5), (max_x, y_val[x_val.index(max_x)]+5)), fill=(0, 0, 255), width=int(np.ceil(3)))
+                            draw2.line(((min_x, y_val[x_val.index(min_x)] + 5), (max_x, y_val[x_val.index(max_x)] + 5)),
+                                       fill=(0, 0, 255), width=int(np.ceil(3)))
 
                         else:
-                            line_list_tuples[l1] = (x_val[y_val.index(min_y)], min_y, x_val[y_val.index(max_y)],max_y)
-                            draw2.line(((x_val[y_val.index(min_y)] + 5, min_y), (x_val[y_val.index(max_y)] + 5,max_y)), fill=(0, 0, 255), width=int(np.ceil(3)))
+                            line_list_tuples[l1] = (x_val[y_val.index(min_y)], min_y, x_val[y_val.index(max_y)], max_y)
+                            draw2.line(((x_val[y_val.index(min_y)] + 5, min_y), (x_val[y_val.index(max_y)] + 5, max_y)),
+                                       fill=(0, 0, 255), width=int(np.ceil(3)))
 
                         del line_list_tuples[l2]
                         from matplotlib import pyplot as plt
@@ -359,7 +378,7 @@ class TableLSDProcessor:
                     #plt.imshow(np.array(img_color2))
                     #plt.show()
         from matplotlib import pyplot as plt
-        fig, ax = plt.subplots(1,2, sharex=True, sharey=True)
+        fig, ax = plt.subplots(1, 2, sharex=True, sharey=True)
         img_color2 = img.pil_image.convert('RGB')
         draw2 = ImageDraw.Draw(img_color2)
         for i in line_list_tuples:
@@ -367,25 +386,22 @@ class TableLSDProcessor:
             #pt1 = i.point1()
             #pt2 = i.point2()
             color = tuple(np.random.randint(256, size=3))
-            draw2.line(((x1,y1), (x2,y2)), fill=color, width=int(np.ceil(6)))
+            draw2.line(((x1, y1), (x2, y2)), fill=color, width=int(np.ceil(6)))
         ax[0].imshow(np.array(img_color))
         ax[1].imshow(np.array(img_color2))
         plt.show()
         pass
         if keep_dim:
-            return #TableResult()
+            return  #TableResult()
         else:
-            return #TableResult()
+            return  #TableResult()
 
 
 if __name__ == "__main__":
 
-
-
     #exit()
     path = "/home/alexanderh/Documents/datasets/gehrke/original/*.png"
     for i in glob.glob(path):
-
         pil_image = Image.open(i)
         image = np.array(pil_image)
         # image = binarize(image, algorithm=BinarizationAlgorithm("isauvola")).astype("uint8") * 255

@@ -45,9 +45,11 @@ def show_result(result: TableResult):
 
 if __name__ == "__main__":
     model = os.path.join("/home/alexanderh/Documents/datasets/table/models_f", 'best.torch')
-    model = os.path.join("/home/alexanderh/PycharmProjects/table_line_detection/neu/", 'best.torch')
+    #model = os.path.join("/home/alexanderh/PycharmProjects/table_line_detection/neu/", 'best.torch')
+    model = os.path.join("/tmp/", 'best.torch')
+
     modelbuilder = ModelBuilderLoad.from_disk(
-        model_weights=os.path.join("/home/alexanderh/Documents/datasets/table/models_f", 'best.torch'),
+        model_weights=os.path.join(model),
         device=get_default_device())
 
     base_model = modelbuilder.get_model()
@@ -62,7 +64,7 @@ if __name__ == "__main__":
     path5 = "/home/alexanderh/Documents/datasets/table/archiv/WO2001056941A1/*jpg"
     path6 = "/home/alexanderh/Documents/datasets/table/archiv/EP1918/*jpg"
     path7 = "/home/alexanderh/Documents/datasets/table/doc2/*png"
-    for i in glob.glob(path7):
+    for i in glob.glob(path6):
         pil_image = Image.open(i)
         image = np.array(pil_image)
         # image = binarize(image, algorithm=BinarizationAlgorithm("isauvola")).astype("uint8") * 255

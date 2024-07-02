@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from albumentations.pytorch import ToTensorV2
 from mashumaro.mixins.json import DataClassJSONMixin
+from segmentation.util import show_images
 from torch.utils.data import Dataset, DataLoader
 
 from segmentation.callback import ModelWriterCallback
@@ -36,14 +37,18 @@ from segmentation.settings import ColorMap, ClassSpec, Preprocessingfunction, Pr
     CustomModelSettings, ModelConfiguration, ProcessingSettings, NetworkTrainSettings
 
 
+
+
+
+
 def default_transform():
     result = Compose([
-        ShiftScaleRotate(rotate_limit=2, scale_limit=(-0.1, 0.1), shift_limit_x=0.2, shift_limit_y=0.2,
+        ShiftScaleRotate(rotate_limit=1, scale_limit=(-0.1, 0.1), shift_limit_x=0.2, shift_limit_y=0.2,
                          border_mode=cv2.BORDER_CONSTANT, value=(255, 255, 255), mask_value=0),
-        Affine(shear=2, cval=(255, 255, 255), cval_mask=0),
+        #Affine(shear=2, cval=(255, 255, 255), cval_mask=0),
         albumentations.HorizontalFlip(p=0.25),
         RandomGamma(),
-        ImageCompression(quality_lower=15, quality_upper=100, p=0.5),
+        ImageCompression(quality_lower=5, quality_upper=100, p=0.5),
         RandomBrightnessContrast(),
         albumentations.OneOf([
             albumentations.OneOf([
@@ -145,7 +150,7 @@ def crop_mask_image(image, max_pixel_size):
 
 class TableDataset(Dataset):
     def __init__(self, df,
-                 transforms: PreprocessingTransforms = None, scale_area=3000000):
+                 transforms: PreprocessingTransforms = None, scale_area=2100000):
         self.df = df
         self.transforms = transforms
         self.index = self.df.index.tolist()
@@ -163,6 +168,8 @@ class TableDataset(Dataset):
 
         SimpTableLineFileFormat.from_dict(json.load(open(mask_id))).draw_all_lines(pil_image, config=LineDrawConfig(),
                                                                                    rescale_factor=rescale_factor)
+        #show_images([image, pil_image], ["Image", "Mask"])
+
         x, y = crop_mask_image(image, self.scale_area)
 
         mask = np.array(pil_image)
@@ -176,7 +183,14 @@ class TableDataset(Dataset):
             image = image.astype("uint8") * 255
 
         transformed = self.transforms.transform_train(image, mask)  # TODO: switch between modes based on parameter
-        # show_images([image,transformed["image"].cpu().numpy().transpose([1,2,0])],["Original","Augmented"])
+        if False:
+            image_tf = transformed["image"].cpu().numpy().transpose([1,2,0])
+            std = np.array([0.229, 0.224, 0.225])
+            mean = np.array([0.485, 0.456, 0.406])
+            image_tf = image_tf * std + mean
+            image_tf = image_tf * 255
+            image_tf = image_tf.astype("uint8")
+            show_images([image,image_tf, transformed["mask"].cpu().numpy()*255],["Original","Augmented", "Mask"])
         return transformed["image"], transformed["mask"], torch.tensor(item)
 
     def __len__(self):
@@ -200,7 +214,7 @@ custom_model_encoder_depth = CustomModelSettings.encoder_depth
 def train():
     predfined_nw_settings = PredefinedNetworkSettings(
         architecture=Architecture.UNET,
-        encoder='efficientnet-b3',
+        encoder='efficientnet-b7',
         classes=len(TableLabel),
         encoder_depth=PredefinedNetworkSettings.encoder_depth,
         decoder_channel=PredefinedNetworkSettings.decoder_channel,
@@ -245,10 +259,17 @@ def finetune():
 
 
 if __name__ == "__main__":
-    images_dirs = ["/home/alexanderh/Documents/datasets/table/doc/", "/home/alexanderh/Documents/datasets/table/doc2/", "/home/alexanderh/Documents/datasets/table/SynthTableDS3/img/"]
-    mask_dir = ["/home/alexanderh/Documents/datasets/table/gt", "/home/alexanderh/Documents/datasets/table/gt2/", "/home/alexanderh/Documents/datasets/table/SynthTableDS3/masks/"]
+    doc1 = "/home/alexanderh/Documents/datasets/table/doc/"
+    gt1 = "/home/alexanderh/Documents/datasets/table/gt/"
+    doc2 = "/home/alexanderh/Documents/datasets/table/doc2/"
+    gt2  = "/home/alexanderh/Documents/datasets/table/gt2/"
+    doc3 = "/home/alexanderh/Documents/datasets/table/SynthTableDS3/img/"
+    gt3 = "/home/alexanderh/Documents/datasets/table/SynthTableDS3/masks/"
+    images_dirs = [  doc2]
+    mask_dir = [  gt2]
     #images_dirs = ["/home/alexanderh/Documents/datasets/table/doc2/"]
     #mask_dir = ["/home/alexanderh/Documents/datasets/table/gt2/"]
+
     df = dirs_to_pandaframe(images_dirs, mask_dir)
 
     color_map = ColorMap([ClassSpec(label=i.value, name=i.name.lower(), color=i.get_color()) for i in TableLabel])
@@ -262,7 +283,7 @@ if __name__ == "__main__":
     post_transforms = Compose(remove_nones([
         NetworkEncoderTransform(Preprocessingfunction.name),
         NetworkEncoderTransform(
-            'efficientnet-b3'),
+            'efficientnet-b7'),
         ToTensorV2()
     ]))
     transforms = PreprocessingTransforms(
@@ -276,8 +297,8 @@ if __name__ == "__main__":
     train_loader = DataLoader(dataset=train_data, batch_size=1, shuffle=True)
     val_loader = DataLoader(dataset=val_data, batch_size=1, shuffle=False)
 
-    # network, config,  = train()
-    network, config, = finetune()
+    network, config,  = train()
+    #network, config, = finetune()
 
     mw = ModelWriterCallback(network, config, save_path=Path("/tmp/"), prefix="",
                              metric_watcher_index=0)
@@ -296,5 +317,5 @@ if __name__ == "__main__":
                              callbacks=callbacks, debug_color_map=config.color_map)
 
     os.makedirs(os.path.dirname("/tmp/"), exist_ok=True)
-    trainer.train_epochs(train_loader=train_loader, val_loader=val_loader, n_epoch=25, lr_schedule=None)
+    trainer.train_epochs(train_loader=train_loader, val_loader=val_loader, n_epoch=50, lr_schedule=None)
     pass
