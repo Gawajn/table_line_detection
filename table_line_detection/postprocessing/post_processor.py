@@ -25,7 +25,7 @@ class TablePostProcessorConfig:
 
 class PostProcessor(abc.ABC):
     def __init__(self, config: TablePostProcessorConfig):
-        self.config = TablePostProcessorConfig
+        self.config = config
 
     @abc.abstractmethod
     def extract_lines(self, image_map):
