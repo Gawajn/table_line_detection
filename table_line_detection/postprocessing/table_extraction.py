@@ -37,6 +37,7 @@ class BaseLineCCs(object):
 
 
 def calculate_distance(index, ccs, maximum_angle, baseline_border_image):
+    print(baseline_border_image)
     index1 = []
     index2 = []
     value = []
@@ -62,18 +63,28 @@ def calculate_distance(index, ccs, maximum_angle, baseline_border_image):
                 angle = angle_to(np.array(y.cc_right), np.array(x.cc_left))
                 distance = x.cc_left[1] - y.cc_right[1]
                 #height_difference = abs(x.cc_left[0] - y.cc_right[0])
+                print(f"distance {distance}")
 
                 test_angle = maximum_angle if distance > 30 else maximum_angle * 5 if distance > 5 else maximum_angle * 10
-                if test_angle < angle < (360 - test_angle):
-                    distance = 99999
-                else:
-                    point_c = y.cc_right
-                    point_n = x.cc_left
+                print(f"ltest angle {test_angle} angle: {angle}")
 
-                    x_points = np.arange(start=point_c[1], stop=point_n[1] + 1)
-                    y_points = np.interp(x_points, [point_c[1], point_n[1]],
-                                         [point_c[0], point_n[0]]).astype(int)
+                if test_angle < angle < (360 - test_angle):
+                    if distance < 0 and abs(distance) < 5 and abs(x.cc_left[0] - y.cc_right[0]) < 5:
+                        distance = abs(distance)
+                    else:
+                        distance = 99999
+                    ## small overlap
+                    distance = 99999
+
+                else:
+
                     if baseline_border_image:
+                        point_c = y.cc_right
+                        point_n = x.cc_left
+
+                        x_points = np.arange(start=point_c[1], stop=point_n[1] + 1)
+                        y_points = np.interp(x_points, [point_c[1], point_n[1]],
+                                             [point_c[0], point_n[0]]).astype(int)
                         indexes = (y_points, x_points)
                         blackness = np.sum(baseline_border_image[indexes])
                         # print('left' + str(blackness))
@@ -82,22 +93,26 @@ def calculate_distance(index, ccs, maximum_angle, baseline_border_image):
             elif right(x, y):
                 angle = angle_to(np.array(x.cc_right), np.array(y.cc_left))
                 distance = y.cc_left[1] - x.cc_right[1]
+                print(f"distance {distance}")
                 test_angle = maximum_angle if distance > 30 else maximum_angle * 5 if distance > 5 else maximum_angle * 10
                 #height_difference = abs(y.cc_left[0] - x.cc_right[0])
-
+                print(f"rtest angle {test_angle} angle: {angle}")
                 if test_angle < angle < (360 - test_angle):
+                    if distance < 0 and abs(distance) < 5 and abs(x.cc_left[0] - y.cc_right[0]) < 5:
+                        distance = abs(distance)
+                    else:
+                        distance = 99999
                     distance = 99999
                 else:
-                    distance = y.cc_left[1] - x.cc_right[1]
 
-                    point_c = x.cc_right
-                    point_n = y.cc_left
-
-                    x_points = np.arange(start=point_c[1], stop=point_n[1] + 1)
-                    y_points = np.interp(x_points, [point_c[1], point_n[1]],
-                                         [point_c[0], point_n[0]]).astype(
-                        int)
                     if baseline_border_image:
+                        point_c = x.cc_right
+                        point_n = y.cc_left
+
+                        x_points = np.arange(start=point_c[1], stop=point_n[1] + 1)
+                        y_points = np.interp(x_points, [point_c[1], point_n[1]],
+                                             [point_c[0], point_n[0]]).astype(
+                            int)
                         indexes = (y_points, x_points)
 
                         blackness = np.sum(baseline_border_image[indexes])
@@ -113,6 +128,83 @@ def calculate_distance(index, ccs, maximum_angle, baseline_border_image):
             # distance_matrix[ind1, ind2] = distance * same_type
     return (index1, index2), value
 
+
+def calculate_distance2(index, ccs, max_delta_y, baseline_border_image):
+    print(baseline_border_image)
+    index1 = []
+    index2 = []
+    value = []
+    x = ccs[index]
+    ind1 = index
+    for ind2 in range(index, len(ccs)):  # 0
+        y = ccs[ind2]
+        if x is y:
+            index1.append(ind1)
+            index2.append(ind2)
+            value.append(0)
+        else:
+            distance = 0
+            same_type = 1 if x.type == y.type else 1000
+
+            def left(x, y):
+                return x.cc_left[1] < y.cc_left[1]
+
+            def right(x, y):
+                return x.cc_right[1] > y.cc_left[1]
+
+            if left(x, y):
+                #angle = angle_to(np.array(y.cc_right), np.array(x.cc_left))
+                distance = abs(x.cc_right[1] - y.cc_left[1])
+                #height_difference = abs(x.cc_left[0] - y.cc_right[0])
+                y_delta = abs(x.cc_left[0] - y.cc_right[0])
+
+                if y_delta > max_delta_y:
+                    distance = 99999
+                print(f"distance {distance}")
+
+
+                if baseline_border_image:
+                    point_c = y.cc_right
+                    point_n = x.cc_left
+
+                    x_points = np.arange(start=point_c[1], stop=point_n[1] + 1)
+                    y_points = np.interp(x_points, [point_c[1], point_n[1]],
+                                         [point_c[0], point_n[0]]).astype(int)
+                    indexes = (y_points, x_points)
+                    blackness = np.sum(baseline_border_image[indexes])
+                    # print('left' + str(blackness))
+                    distance = distance * (blackness * 5000 + 1)
+
+            else:
+                distance = abs(y.cc_right[1] - x.cc_left[1])
+
+                y_delta = abs(y.cc_left[0] - x.cc_right[0])
+
+                if y_delta > max_delta_y:
+                    distance = 99999
+                print(f"distance {distance}")
+
+                if baseline_border_image:
+                    point_c = x.cc_right
+                    point_n = y.cc_left
+
+                    x_points = np.arange(start=point_c[1], stop=point_n[1] + 1)
+                    y_points = np.interp(x_points, [point_c[1], point_n[1]],
+                                         [point_c[0], point_n[0]]).astype(
+                        int)
+                    indexes = (y_points, x_points)
+
+                    blackness = np.sum(baseline_border_image[indexes])
+                    distance = distance * (blackness * 5000 + 1)
+
+            index1.append(ind1)
+            index2.append(ind2)
+            value.append(distance * same_type)
+            index1.append(ind2)
+            index2.append(ind1)
+            value.append(distance * same_type)
+            # distance_matrix[ind1, ind2] = distance * same_type
+    return (index1, index2), value
 
 def extracted_ccs_optimized(array: np.array):
     raveled_array = array.ravel()
@@ -170,7 +262,7 @@ def extract_table_lines(image_map: np.array, line_horizontal_index=1, line_verti
         distance_matrix = np.zeros((len(ccs), len(ccs)))
 
         from functools import partial
-        distance_func = partial(calculate_distance, ccs=ccs, maximum_angle=maximum_angle, baseline_border_image=baseline_border
+        distance_func = partial(calculate_distance2, ccs=ccs, max_delta_y=maximum_angle, baseline_border_image=baseline_border
                                 )
         indexes_ccs = list(range(len(ccs)))
         if processes is not None and processes > 1:
