@@ -130,7 +130,6 @@ def calculate_distance(index, ccs, maximum_angle, baseline_border_image):
 
 
 def calculate_distance2(index, ccs, max_delta_y, baseline_border_image):
-    print(baseline_border_image)
     index1 = []
     index2 = []
     value = []
@@ -160,8 +159,6 @@ def calculate_distance2(index, ccs, max_delta_y, baseline_border_image):
 
                 if y_delta > max_delta_y:
                     distance = 99999
-                print(f"distance {distance}")
-
 
                 if baseline_border_image:
                     point_c = y.cc_right
@@ -182,7 +179,6 @@ def calculate_distance2(index, ccs, max_delta_y, baseline_border_image):
 
                 if y_delta > max_delta_y:
                     distance = 99999
-                print(f"distance {distance}")
 
                 if baseline_border_image:
                     point_c = x.cc_right

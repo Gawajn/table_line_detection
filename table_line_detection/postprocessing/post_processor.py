@@ -38,12 +38,10 @@ class DbScanPostProcessor(PostProcessor):
 
     def extract_lines(self, image_map, line_horizontal_index=2, line_vertical_index=4):
         image = np.argmax(image_map, axis=-1)
-        from matplotlib import pyplot as plt
-        plt.imshow(image)
-        plt.show()
         return extract_table_lines(image_map=image, line_horizontal_index=line_horizontal_index,
                                    line_vertical_index=line_vertical_index, original=None,
                                    processes=self.config.processes, connection_width=self.config.dbscan_merge_distance,
                                    predict_borders=None)
+
 
 
