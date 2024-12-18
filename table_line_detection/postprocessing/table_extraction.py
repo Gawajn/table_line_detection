@@ -36,7 +36,7 @@ class BaseLineCCs(object):
         return self.cc < other
 
 
-def calculate_distance(index, ccs, maximum_angle):
+def calculate_distance(index, ccs, maximum_angle, baseline_border_image):
     index1 = []
     index2 = []
     value = []
@@ -64,7 +64,7 @@ def calculate_distance(index, ccs, maximum_angle):
                 #height_difference = abs(x.cc_left[0] - y.cc_right[0])
 
                 test_angle = maximum_angle if distance > 30 else maximum_angle * 5 if distance > 5 else maximum_angle * 10
-                if  test_angle < angle < (360 - test_angle):
+                if test_angle < angle < (360 - test_angle):
                     distance = 99999
                 else:
                     point_c = y.cc_right
@@ -73,10 +73,11 @@ def calculate_distance(index, ccs, maximum_angle):
                     x_points = np.arange(start=point_c[1], stop=point_n[1] + 1)
                     y_points = np.interp(x_points, [point_c[1], point_n[1]],
                                          [point_c[0], point_n[0]]).astype(int)
-                    # indexes = (y_points, x_points)
-                    ##blackness = np.sum(baseline_border_image[indexes])
-                    # print('left' + str(blackness))
-                    # distance = distance * (blackness * 5000 + 1)
+                    if baseline_border_image:
+                        indexes = (y_points, x_points)
+                        blackness = np.sum(baseline_border_image[indexes])
+                        # print('left' + str(blackness))
+                        distance = distance * (blackness * 5000 + 1)
 
             elif right(x, y):
                 angle = angle_to(np.array(x.cc_right), np.array(y.cc_left))
@@ -96,10 +97,11 @@ def calculate_distance(index, ccs, maximum_angle):
                     y_points = np.interp(x_points, [point_c[1], point_n[1]],
                                          [point_c[0], point_n[0]]).astype(
                         int)
-                    ##indexes = (y_points, x_points)
+                    if baseline_border_image:
+                        indexes = (y_points, x_points)
 
-                    # blackness = np.sum(baseline_border_image[indexes])
-                    # distance = distance * (blackness * 5000 + 1)
+                        blackness = np.sum(baseline_border_image[indexes])
+                        distance = distance * (blackness * 5000 + 1)
             else:
                 distance = 99999
             index1.append(ind1)
@@ -111,6 +113,7 @@ def calculate_distance(index, ccs, maximum_angle):
             # distance_matrix[ind1, ind2] = distance * same_type
     return (index1, index2), value
 
+
 def extracted_ccs_optimized(array: np.array):
     raveled_array = array.ravel()
 
@@ -121,33 +124,38 @@ def extracted_ccs_optimized(array: np.array):
     ccs = [np.unravel_index(res[ind], array.shape) for ind, i in enumerate(res)]
     return ccs
 
+
 def extract_tables_from_probability_map(image_map: np.array, line_horizontal_index=1, line_vertical_index=2,
-                                        original=None, processes=8):
+                                        original=None, processes=8, predict_borders=False):
     image = np.argmax(image_map, axis=-1)
 
-    return extract_baselines(image_map=image, line_horizontal_index=line_horizontal_index,
+    return extract_table_lines(image_map=image, line_horizontal_index=line_horizontal_index,
                              line_vertical_index=line_vertical_index, original=original, processes=processes,
-                             connection_width=100)
+                             connection_width=100, predict_borders=predict_borders)
 
 
 def extract_horizontal_lines(image_map: np.array, line_horizontal_index=1, line_vertical_index=2, original=None,
                              processes=1, connection_width=100):
-    lines = extract_baselines(image_map, line_horizontal_index, line_vertical_index, original, processes,
+    lines = extract_table_lines(image_map, line_horizontal_index, line_vertical_index, original, processes,
                               connection_width)
     pass
 
 
-def extract_baselines(image_map: np.array, line_horizontal_index=1, line_vertical_index=2, original=None, processes=1,
-                      connection_width=100):
+def extract_table_lines(image_map: np.array, line_horizontal_index=1, line_vertical_index=2, original=None, processes=1,
+                      connection_width=100, predict_borders=False):
     from scipy.ndimage.measurements import label
 
     base_ind = np.where(image_map == line_horizontal_index)
     base_border_ind = np.where(image_map == line_vertical_index)
 
     baseline = np.zeros(image_map.shape)
-    baseline_border = np.zeros(image_map.shape)
     baseline[base_ind] = 1
-    baseline_border[base_border_ind] = 1
+    if not predict_borders:
+        baseline_border = None
+    else:
+        baseline_border = np.zeros(image_map.shape)
+
+        baseline_border[base_border_ind] = 1
     baseline_ccs, n_baseline_ccs = label(baseline, structure=[[1, 1, 1], [1, 1, 1], [1, 1, 1]])
     baseline_ccs = extracted_ccs_optimized(baseline_ccs)
 
@@ -162,7 +170,7 @@ def extract_baselines(image_map: np.array, line_horizontal_index=1, line_vertica
         distance_matrix = np.zeros((len(ccs), len(ccs)))
 
         from functools import partial
-        distance_func = partial(calculate_distance, ccs=ccs, maximum_angle=maximum_angle,
+        distance_func = partial(calculate_distance, ccs=ccs, maximum_angle=maximum_angle, baseline_border_image=baseline_border
                                 )
         indexes_ccs = list(range(len(ccs)))
         if processes is not None and processes > 1:

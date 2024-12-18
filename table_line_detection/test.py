@@ -46,7 +46,7 @@ def show_result(result: TableResult):
 if __name__ == "__main__":
     model = os.path.join("/home/alexanderh/Documents/datasets/table/models_f", 'best.torch')
     #model = os.path.join("/home/alexanderh/PycharmProjects/table_line_detection/neu/", 'best.torch')
-    model = os.path.join("/tmp/", 'best.torch')
+    #model = os.path.join("/tmp/", 'best.torch')
 
     modelbuilder = ModelBuilderLoad.from_disk(
         model_weights=os.path.join(model),

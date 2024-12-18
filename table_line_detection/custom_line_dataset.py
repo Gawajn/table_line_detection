@@ -37,8 +37,33 @@ from segmentation.settings import ColorMap, ClassSpec, Preprocessingfunction, Pr
     CustomModelSettings, ModelConfiguration, ProcessingSettings, NetworkTrainSettings
 
 
+def get_line_border(p1, p2, length=20, max_width=None, max_height=None, lw=5):
+    x1, y1 = p1
+    x2, y2 = p2
 
+    x3 = x2 - x1
+    y3 = y2 - y1
+    lw = lw + 1
+    if x2 > x1:
+        if max_width > x2 + lw / 2:
+            x2 = x2 + lw / 2
+    if x2 < x1:
+        if 0 < x2 - lw / 2:
+            x2 = x2 - lw / 2
+    mag = math.sqrt(x3 * x3 + y3 * y3)
+    x3 = x3 / mag
+    y3 = y3 / mag
 
+    temp = x3
+    x3 = -y3
+    y3 = temp
+
+    xl1 = x2 + x3 * length
+    xl2 = x2 + x3 * -length
+
+    yl1 = y2 + y3 * length
+    yl2 = y2 + y3 * -length
+    return Line([Point(xl1, yl1), Point(xl2, yl2)])
 
 
 def default_transform():
@@ -74,11 +99,16 @@ class TableLabel(IntEnum):
     BACKGROUND = 0
     HORIZONTAL_LINES = 1
     VERTICAL_LINES = 2
+    HORIZONTAL_LINES_BORDER = 3
+    VERTICAL_LINES_BORDER = 4
 
     def get_color(self):
         return {0: [255, 255, 255],
                 1: [255, 0, 0],
-                2: [0, 255, 0]
+                2: [0, 255, 0],
+                3: [255, 0, 255],
+                4: [0, 255, 255]
+
                 }[self.value]
 
 
@@ -87,6 +117,11 @@ class LineDrawConfig:
     line_width: int = 5
     horizontal_lines_color: Tuple[int] = (255, 0, 0)
     vertical_lines_color: Tuple[int] = (0, 255, 0)
+    draw_borders: bool = False
+    line_border_width: int = 5
+    line_border_length: int = 5
+    horizontal_lines_color_border: Tuple[int] = (255, 0, 255)
+    vertical_lines_color_border: Tuple[int] = (0, 255, 255)
     draw_first: str = "vertical"
 
 
@@ -115,6 +150,24 @@ class SimpTableLineFileFormat(DataClassJSONMixin):
     vertical_lines: List[Line]
     pass
 
+    def draw_borders(self, image: Image, config: LineDrawConfig, rescale_factor: float = 1.0):
+        for i in self.horizontal_lines:
+            get_line_border((i.line[0].x, i.line[0].y), (i.line[-1].x, i.line[-1].y), config.line_border_length,
+                            image.width, image.height).draw_line(image, config.line_border_width,
+                                                                 config.horizontal_lines_color_border, rescale_factor)
+            get_line_border((i.line[-1].x, i.line[-1].y), (i.line[0].x, i.line[0].y),
+                            config.line_border_length, image.width, image.height).draw_line(image,
+                                                                                            config.line_border_width,
+                                                                                            config.horizontal_lines_color_border,
+                                                                                            rescale_factor)
+        for i in self.vertical_lines:
+            get_line_border((i.line[0].x, i.line[0].y), (i.line[-1].x, i.line[-1].y), config.line_border_length,
+                            image.width, image.height).draw_line(image, config.line_border_width,
+                                                                 config.vertical_lines_color_border, rescale_factor)
+            get_line_border((i.line[-1].x, i.line[-1].y), (i.line[0].x, i.line[0].y), config.line_border_length,
+                            image.width, image.height).draw_line(image, config.line_border_width,
+                                                                 config.vertical_lines_color_border, rescale_factor)
+
     def draw_horizontal_lines(self, image: Image, config: LineDrawConfig, rescale_factor: float = 1.0):
         for i in self.horizontal_lines:
             i.draw_line(image, config.line_width, config.horizontal_lines_color, rescale_factor)
@@ -127,6 +180,13 @@ class SimpTableLineFileFormat(DataClassJSONMixin):
         if config.draw_first == "vertical":
             self.draw_vertical_lines(image, config, rescale_factor)
             self.draw_horizontal_lines(image, config, rescale_factor)
+            if config.draw_borders:
+                self.draw_borders(image, config, rescale_factor)
+        else:
+            self.draw_horizontal_lines(image, config, rescale_factor)
+            self.draw_vertical_lines(image, config, rescale_factor)
+            if config.draw_borders:
+                self.draw_borders(image, config, rescale_factor)
 
 
 def crop_mask_image(image, max_pixel_size):
@@ -146,11 +206,9 @@ def crop_mask_image(image, max_pixel_size):
     return (0, image.width), (0, image.height)
 
 
-
-
 class TableDataset(Dataset):
     def __init__(self, df,
-                 transforms: PreprocessingTransforms = None, scale_area=2100000):
+                 transforms: PreprocessingTransforms = None, scale_area=2000000):
         self.df = df
         self.transforms = transforms
         self.index = self.df.index.tolist()
@@ -161,14 +219,14 @@ class TableDataset(Dataset):
         image = Image.open(image_id)
         # rescale_factor = get_rescale_factor(image, scale_area=self.scale_area)
         rescale_factor = 1.0
-
+        # print(f"imageId: {image_id}, maskId: {mask_id}, rescale_factor: {rescale_factor}")
         # image = rescale_pil(image, rescale_factor, 1)
         # print(rescale_factor)
         pil_image = Image.new('RGB', (image.width, image.height), (255, 255, 255))
 
         SimpTableLineFileFormat.from_dict(json.load(open(mask_id))).draw_all_lines(pil_image, config=LineDrawConfig(),
                                                                                    rescale_factor=rescale_factor)
-        #show_images([image, pil_image], ["Image", "Mask"])
+        show_images([image, pil_image], ["Image", "Mask"])
 
         x, y = crop_mask_image(image, self.scale_area)
 
@@ -184,13 +242,13 @@ class TableDataset(Dataset):
 
         transformed = self.transforms.transform_train(image, mask)  # TODO: switch between modes based on parameter
         if False:
-            image_tf = transformed["image"].cpu().numpy().transpose([1,2,0])
+            image_tf = transformed["image"].cpu().numpy().transpose([1, 2, 0])
             std = np.array([0.229, 0.224, 0.225])
             mean = np.array([0.485, 0.456, 0.406])
             image_tf = image_tf * std + mean
             image_tf = image_tf * 255
             image_tf = image_tf.astype("uint8")
-            show_images([image,image_tf, transformed["mask"].cpu().numpy()*255],["Original","Augmented", "Mask"])
+            show_images([image, image_tf, transformed["mask"].cpu().numpy() * 255], ["Original", "Augmented", "Mask"])
         return transformed["image"], transformed["mask"], torch.tensor(item)
 
     def __len__(self):
@@ -242,7 +300,7 @@ def train():
                                                                           rgb=True,
                                                                           scale_max_area=999999999,
                                                                           preprocessing=Preprocessingfunction() if not use_custom_model else Preprocessingfunction(
-                                                                              "efficientnet-b3"),
+                                                                              "efficientnet-b7"),
                                                                           transforms=transforms.to_dict()),
 
                                 color_map=color_map)
@@ -262,13 +320,13 @@ if __name__ == "__main__":
     doc1 = "/home/alexanderh/Documents/datasets/table/doc/"
     gt1 = "/home/alexanderh/Documents/datasets/table/gt/"
     doc2 = "/home/alexanderh/Documents/datasets/table/doc2/"
-    gt2  = "/home/alexanderh/Documents/datasets/table/gt2/"
+    gt2 = "/home/alexanderh/Documents/datasets/table/gt2/"
     doc3 = "/home/alexanderh/Documents/datasets/table/SynthTableDS3/img/"
     gt3 = "/home/alexanderh/Documents/datasets/table/SynthTableDS3/masks/"
-    images_dirs = [  doc2]
-    mask_dir = [  gt2]
-    #images_dirs = ["/home/alexanderh/Documents/datasets/table/doc2/"]
-    #mask_dir = ["/home/alexanderh/Documents/datasets/table/gt2/"]
+    #images_dirs = [doc3]
+    #mask_dir = [gt3]
+    images_dirs = ["/home/alexanderh/Documents/datasets/table/doc2/"]
+    mask_dir = ["/home/alexanderh/Documents/datasets/table/gt2/"]
 
     df = dirs_to_pandaframe(images_dirs, mask_dir)
 
@@ -297,7 +355,7 @@ if __name__ == "__main__":
     train_loader = DataLoader(dataset=train_data, batch_size=1, shuffle=True)
     val_loader = DataLoader(dataset=val_data, batch_size=1, shuffle=False)
 
-    network, config,  = train()
+    network, config, = train()
     #network, config, = finetune()
 
     mw = ModelWriterCallback(network, config, save_path=Path("/tmp/"), prefix="",

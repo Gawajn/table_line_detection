@@ -9,7 +9,11 @@ from segmentation.network_postprocessor import scale_baseline
 from segmentation.preprocessing.source_image import SourceImage
 from segmentation.settings import ModelConfiguration, ColorMap
 
-from table_line_detection.postprocessing.table_extraction import extract_tables_from_probability_map
+from table_line_detection.postprocessing.post_processor import TablePostProcessorConfig
+#from table_line_detection.postprocessing.table_extraction import extract_tables_from_probability_map
+#from table_line_detection.table_lsd_processor import TableLSDProcessorConfig
+
+
 
 
 @dataclass
@@ -35,16 +39,20 @@ class NetworkTablePostProcessor:
     def from_single_predictor(cls, predictor: NetworkPredictor, mc: ModelConfiguration):
         return cls(predictor, mc.color_map)
 
-    def __init__(self, predictor: NetworkPredictorBase, color_map: ColorMap = None):
+    def __init__(self, predictor: NetworkPredictorBase, color_map: ColorMap = None, config: TablePostProcessorConfig = TablePostProcessorConfig()):
         self.predictor = predictor
         self.color_map = color_map
+        self.config = config
 
     def predict_image(self, img: SourceImage, keep_dim: bool = True, processes: int = 1) -> PIL.Image:
         res = self.predictor.predict_image(img)
-        baselines_horizontal = extract_tables_from_probability_map(res.probability_map, processes=processes, line_horizontal_index=1, line_vertical_index=3)
+        #print(len(self.color_map))
+        post_processor = self.config.algorithm.get_class()(config=self.config)
+        #baselines_horizontal, baselines_vertical = post_processor.extract_lines()
+        baselines_horizontal = post_processor.extract_lines(res.probability_map, line_horizontal_index=1, line_vertical_index=3)
         baselines_vertical = transpose_baselines(
-            extract_tables_from_probability_map(np.transpose(res.probability_map, axes=[1, 0, 2]),
-                                                processes=processes, line_horizontal_index=2, line_vertical_index=3))
+            post_processor.extract_lines(np.transpose(res.probability_map, axes=[1, 0, 2]),
+                                                 line_horizontal_index=2, line_vertical_index=4))
         mask = None
         if self.color_map:
             lmap = np.argmax(res.probability_map, axis=-1)
