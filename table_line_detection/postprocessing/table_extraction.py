@@ -230,7 +230,7 @@ def extract_horizontal_lines(image_map: np.array, line_horizontal_index=1, line_
 
 
 def extract_table_lines(image_map: np.array, line_horizontal_index=1, line_vertical_index=2, original=None, processes=1,
-                      connection_width=100, predict_borders=False):
+                      connection_width=100, predict_borders=False, db_scan_delta_distance=5):
     from scipy.ndimage.measurements import label
 
     base_ind = np.where(image_map == line_horizontal_index)
@@ -248,7 +248,7 @@ def extract_table_lines(image_map: np.array, line_horizontal_index=1, line_verti
     baseline_ccs = extracted_ccs_optimized(baseline_ccs)
 
     #baseline_ccs = [np.where(baseline_ccs == x) for x in range(1, n_baseline_ccs + 1)]
-    baseline_ccs = [BaseLineCCs(x, 'baseline') for x in baseline_ccs if len(x[0]) > 10]
+    baseline_ccs = [BaseLineCCs(x, 'baseline') for x in baseline_ccs if len(x[0]) > 50]
 
     all_ccs = baseline_ccs  # + baseline_border_ccs
     logger.info("Extracted {} CCs from probability map \n".format(len(all_ccs)))
@@ -272,7 +272,7 @@ def extract_table_lines(image_map: np.array, line_horizontal_index=1, line_verti
         return distance_matrix
 
     with PerformanceCounter(function_name="calculate_distance_matrix"):
-        matrix = calculate_distance_matrix(all_ccs, processes=processes)
+        matrix = calculate_distance_matrix(all_ccs, maximum_angle=db_scan_delta_distance, processes=processes)
 
     from sklearn.cluster import DBSCAN
     if np.sum(matrix) == 0:

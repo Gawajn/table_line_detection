@@ -26,11 +26,14 @@ class TableResult:
 
 def transpose_baselines(lines: List[List[Tuple[int, int]]]):
     transposed_lines = []
-    for line in lines:
-        transpose_line = []
-        for point in line:
-            transpose_line.append((point[1], point[0]))
-        transposed_lines.append(transpose_line)
+    if lines:
+        for line in lines:
+            transpose_line = []
+            for point in line:
+                transpose_line.append((point[1], point[0]))
+            transposed_lines.append(transpose_line)
+    else:
+        return lines
     return transposed_lines
 
 
@@ -49,10 +52,9 @@ class NetworkTablePostProcessor:
         #print(len(self.color_map))
         post_processor = self.config.algorithm.get_class()(config=self.config)
         #baselines_horizontal, baselines_vertical = post_processor.extract_lines()
-        baselines_horizontal = post_processor.extract_lines(res.probability_map, line_horizontal_index=1, line_vertical_index=3)
+        baselines_horizontal = post_processor.extract_lines(res.probability_map, line_index=self.config.line_horizontal_index, border_index=self.config.line_horizontal_index+2)
         baselines_vertical = transpose_baselines(
-            post_processor.extract_lines(np.transpose(res.probability_map, axes=[1, 0, 2]),
-                                                 line_horizontal_index=2, line_vertical_index=4))
+            post_processor.extract_lines(np.transpose(res.probability_map, axes=[1, 0, 2]), line_index=self.config.line_vertical_index, border_index=self.config.line_vertical_index+2))
         mask = None
         if self.color_map:
             lmap = np.argmax(res.probability_map, axis=-1)

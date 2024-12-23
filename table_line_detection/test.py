@@ -42,9 +42,14 @@ def show_result(result: TableResult):
     ax[2].imshow(np.array(result.mask))
     plt.show()
 
+    plt.imshow(np.array(pil_image))
+    plt.show()
+
 
 if __name__ == "__main__":
     model = os.path.join("/home/alexanderh/Documents/datasets/table/models_f", 'best.torch')
+    model = os.path.join("/home/alexanderh/PycharmProjects/table_line_detection/model/Model/", 'model.torch')
+
     #model = os.path.join("/home/alexanderh/PycharmProjects/table_line_detection/neu/", 'best.torch')
     #model = os.path.join("/tmp/", 'best.torch')
 
@@ -63,8 +68,9 @@ if __name__ == "__main__":
     path4 = "/home/alexanderh/mount/uni/scratch/tables/nextgentmf/hard_scans/*.png"
     path5 = "/home/alexanderh/Documents/datasets/table/archiv/WO2001056941A1/*jpg"
     path6 = "/home/alexanderh/Documents/datasets/table/archiv/EP1918/*jpg"
-    path7 = "/home/alexanderh/Documents/datasets/table/doc2/*png"
-    for i in glob.glob(path6):
+    path7 = "/tmp/datasets/40/*png"
+    path8= "/tmp/datasets/MusterUniTraining/*png"
+    for i in glob.glob(path8):
         pil_image = Image.open(i)
         image = np.array(pil_image)
         # image = binarize(image, algorithm=BinarizationAlgorithm("isauvola")).astype("uint8") * 255
